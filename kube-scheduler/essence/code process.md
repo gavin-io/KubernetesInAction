@@ -8,7 +8,9 @@ Options
 
 *option* -> o.Config() -> *config* -> c.Complete() -> *cc*
 
+1. 如果参数--tls-cert-file和--tls-private-key-file未指定，MaybeDefaultWithSelfSignedCerts（）生成自签名证书到--cert-dir指定目录下（CertDirectory/PairName.crt and CertDirectory/PairName.key），如果--cert-dir未指定，生成自签名证书到内存中。
 
+2. ApplyTo()将option{}映射到scheduler的config{}
 
 
 
