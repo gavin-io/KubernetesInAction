@@ -11,6 +11,7 @@ Options
 1. 如果参数--tls-cert-file和--tls-private-key-file未指定，MaybeDefaultWithSelfSignedCerts（）生成自签名证书到--cert-dir指定目录下（CertDirectory/PairName.crt and CertDirectory/PairName.key），如果--cert-dir未指定，生成自签名证书到内存中。
 
 2. ApplyTo()将option{}映射到scheduler的config{}
+3. 
 
 
 
@@ -299,3 +300,5 @@ Global flags:
 参考资料：
 
 1. Kubernetes scheduler学习笔记: https://mp.weixin.qq.com/s?__biz=MzA5OTAyNzQ2OA==&mid=2649702449&idx=1&sn=8e6446948700becbe1cb23abbfecb82e&chksm=88937f52bfe4f6440016e6146af6214e201f8f8205ceda6364187fe9365b98826445bed6a3f0&scene=0&xtrack=1#rd
+
+2. kubelet 源码分析： 事件处理：https://cizixs.com/2017/06/22/kubelet-source-code-analysis-part4-event/
