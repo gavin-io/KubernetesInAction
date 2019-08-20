@@ -2,6 +2,18 @@ kube-scheduler
 
 
 
+### 默认配置
+
+根据数据类型，从schema中选择核实的默认配置器，通过默认配置器Default配置默认值
+
+k8s.io/kubernetes/pkg/scheduler/apis/config/v1alpha1.RegisterDefaults.func1
+
+SetDefaults_KubeSchedulerConfiguration
+
+
+
+
+
 Options
 
  returns default scheduler app options
@@ -11,7 +23,45 @@ Options
 1. 如果参数--tls-cert-file和--tls-private-key-file未指定，MaybeDefaultWithSelfSignedCerts（）生成自签名证书到--cert-dir指定目录下（CertDirectory/PairName.crt and CertDirectory/PairName.key），如果--cert-dir未指定，生成自签名证书到内存中。
 
 2. ApplyTo()将option{}映射到scheduler的config{}
-3. 
+
+
+
+### 事件机制
+
+> kube-scheduler options.Config()为例
+
+```go
+import  (
+"k8s.io/client-go/tools/events"
+)
+
+```
+
+
+
+
+
+### List-Watch机制
+
+> 异步消息系统
+
+4个原则：
+
+可靠性、实时性、顺序性、高性能
+
+> 参考：
+>
+> 理解 K8S 的设计精髓之 list-watch： http://wsfdl.com/kubernetes/2019/01/10/list_watch_in_k8s.html
+
+
+
+
+
+> 参考：
+>
+> Kubernetes Informer 详解： https://www.kubernetes.org.cn/2693.html
+
+
 
 
 
