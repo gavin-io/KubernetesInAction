@@ -7,12 +7,50 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	cliflag "k8s.io/component-base/cli/flag"
+	
+	"k8s.io/client-go/tools/events"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/informers"
+	"k8s.io/kubernetes/pkg/scheduler/factory"
 )
 
 /*
 TODO:
 1. child command
 **/
+
+//SecureServingConfig list secure port
+type SecureServingConfig struct {
+	BindPort string
+}
+
+// Config return a scheduler config object
+type Config struct {
+	// config is the scheduler server's configuration object.
+	ComponentConfig string
+
+	InsecureServing        string
+	InsecureMetricsServing string
+	Authentication         string
+	Authorization          string
+	SecureServing          *SecureServingConfig
+
+	Client          clientset.Interface
+	InformerFactory informers.SharedInformerFactory
+	PodInformer     coreinformers.PodInformer
+	EventClient     v1beta1.EventsGetter
+
+	// TODO: Remove the following after fully migrating to the new events api.
+	CoreEventClient           v1core.EventsGetter
+	LeaderElectionBroadcaster record.EventBroadcaster
+
+	Recorder    events.EventRecorder
+	Broadcaster events.EventBroadcaster
+
+	// LeaderElection is optional.
+	LeaderElection *leaderelection.LeaderElectionConfig
+}
 
 //SecureServingOptions list secure port
 type SecureServingOptions struct {
@@ -102,8 +140,18 @@ func Newcommand() *cobra.Command {
 		},
 	}
 
-	//cf := cmd.Flags()
-	//of := opts.Flags()
+	cf := cmd.Flags()
+	of := opts.Flags()
+	for _, f := range of.FlagSets {
+		cf.AddFlagSet(f)
+	}
+
+	usageFmt := "Usage:\n %s\n"
+	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
+		fmt.Fprintf(cmd.OutOrStderr(), usageFmt, cmd.UseLine())
+		cliflag.PrintSections(cmd.OutOrStderr(), of, 0)
+		return nil
+	})
 
 	return cmd
 }

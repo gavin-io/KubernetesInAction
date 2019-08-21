@@ -48,5 +48,7 @@ require (
 	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 // indirect
 	google.golang.org/grpc v1.23.0 // indirect
 	honnef.co/go/tools v0.0.1-2019.2.2 // indirect
+	k8s.io/api v0.0.0-20190820101039-d651a1528133 // indirect
+	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/component-base v0.0.0-20190820061211-a7d4a0d7145f
 )
