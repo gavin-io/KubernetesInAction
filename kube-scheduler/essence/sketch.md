@@ -1,8 +1,10 @@
-kube-scheduler
+## kube-scheduler
 
+### 配置参数
 
+options
 
-### 默认配置
+options 的默认配置
 
 根据数据类型，从schema中选择核实的默认配置器，通过默认配置器Default配置默认值
 
@@ -12,11 +14,21 @@ SetDefaults_KubeSchedulerConfiguration
 
 
 
+Options  （returns default scheduler app options）
+
+给使用用户提供的可配置的参数
+
+Config 
+
+生成并启动kube-scheduler所需的所有配置项
 
 
-Options
 
- returns default scheduler app options
+
+
+
+
+configs
 
 *option* -> o.Config() -> *config* -> c.Complete() -> *cc*
 
@@ -69,7 +81,7 @@ import  (
 
 
 
-# 附:
+## 附:
 
 >  kube-scheduler的--help的所有参数
 
@@ -325,9 +337,107 @@ Global flags:
 
 
 
+> kubeconfig file 的配置项
 
+type KubeSchedulerConfiguration struct {
 
+​    metav1.TypeMeta
 
+​    // SchedulerName is name of the scheduler, used to select which pods
+
+​    // will be processed by this scheduler, based on pod's "spec.SchedulerName".
+
+​    SchedulerName string
+
+​    // AlgorithmSource specifies the scheduler algorithm source.
+
+​    AlgorithmSource SchedulerAlgorithmSource
+
+​    // RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule
+
+​    // corresponding to every RequiredDuringScheduling affinity rule.
+
+​    // HardPodAffinitySymmetricWeight represents the weight of implicit PreferredDuringScheduling affinity rule, in the range 0-100.
+
+​    HardPodAffinitySymmetricWeight int32
+
+​    // LeaderElection defines the configuration of leader election client.
+
+​    LeaderElection KubeSchedulerLeaderElectionConfiguration
+
+​    // ClientConnection specifies the kubeconfig file and client connection
+
+​    // settings for the proxy server to use when communicating with the apiserver.
+
+​    ClientConnection componentbaseconfig.ClientConnectionConfiguration
+
+​    // HealthzBindAddress is the IP address and port for the health check server to serve on,
+
+​    // defaulting to 0.0.0.0:10251
+
+​    HealthzBindAddress string
+
+​    // MetricsBindAddress is the IP address and port for the metrics server to
+
+​    // serve on, defaulting to 0.0.0.0:10251.
+
+​    MetricsBindAddress string
+
+​    // DebuggingConfiguration holds configuration for Debugging related features
+
+​    // TODO: We might wanna make this a substruct like Debugging componentbaseconfig.DebuggingConfiguration
+
+​    componentbaseconfig.DebuggingConfiguration
+
+​    // DisablePreemption disables the pod preemption feature.
+
+​    DisablePreemption bool
+
+​    // PercentageOfNodeToScore is the percentage of all nodes that once found feasible
+
+​    // for running a pod, the scheduler stops its search for more feasible nodes in
+
+​    // the cluster. This helps improve scheduler's performance. Scheduler always tries to find
+
+​    // at least "minFeasibleNodesToFind" feasible nodes no matter what the value of this flag is.
+
+​    // Example: if the cluster size is 500 nodes and the value of this flag is 30,
+
+​    // then scheduler stops finding further feasible nodes once it finds 150 feasible ones.
+
+​    // When the value is 0, default percentage (5%--50% based on the size of the cluster) of the
+
+​    // nodes will be scored.
+
+​    PercentageOfNodesToScore int32
+
+​    // Duration to wait for a binding operation to complete before timing out
+
+​    // Value must be non-negative integer. The value zero indicates no waiting.
+
+​    // If this value is nil, the default value will be used.
+
+​    BindTimeoutSeconds *int64
+
+​    // Plugins specify the set of plugins that should be enabled or disabled. Enabled plugins are the
+
+​    // ones that should be enabled in addition to the default plugins. Disabled plugins are any of the
+
+​    // default plugins that should be disabled.
+
+​    // When no enabled or disabled plugin is specified for an extension point, default plugins for
+
+​    // that extension point will be used if there is any.
+
+​    Plugins *Plugins
+
+​    // PluginConfig is an optional set of custom plugin arguments for each plugin.
+
+​    // Omitting config args for a plugin is equivalent to using the default config for that plugin.
+
+​    PluginConfig []PluginConfig
+
+}
 
 
 
