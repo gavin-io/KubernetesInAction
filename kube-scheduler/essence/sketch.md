@@ -1,6 +1,6 @@
 ## kube-scheduler
 
-### 配置参数
+### 参数配置
 
 options
 
@@ -16,27 +16,76 @@ SetDefaults_KubeSchedulerConfiguration
 
 Options  （returns default scheduler app options）
 
-给使用用户提供的可配置的参数
+给使用用户提供的可配置的参数，包括从configfile读取配置项的文件路径
 
 Config 
 
-生成并启动kube-scheduler所需的所有配置项
-
-
-
-
-
-
-
-configs
-
-*option* -> o.Config() -> *config* -> c.Complete() -> *cc*
+生成并启动kube-scheduler所需的所有配置项，包括configfile读取的配置项
 
 1. 如果参数--tls-cert-file和--tls-private-key-file未指定，MaybeDefaultWithSelfSignedCerts（）生成自签名证书到--cert-dir指定目录下（CertDirectory/PairName.crt and CertDirectory/PairName.key），如果--cert-dir未指定，生成自签名证书到内存中。
-
 2. ApplyTo()将option{}映射到scheduler的config{}
 
 
+
+CompletedConfig
+
+*option* -> o.Config() -> *config* -> c.Complete() -> *cc*->factory.Configurator->factory.Config->sched
+
+
+
+Start all informers
+
+go cc.PodInformer.Informer().Run(stopCh)
+
+```go
+type podInformer struct {
+	informer cache.SharedIndexInformer
+}
+
+func (i *podInformer) Informer() cache.SharedIndexInformer {
+	return i.informer
+}
+
+func (i *podInformer) Lister() corelisters.PodLister {
+	return corelisters.NewPodLister(i.informer.GetIndexer())
+}
+```
+
+```go
+// NewPodInformer creates a shared index informer that returns only non-terminal pods.
+func NewPodInformer(client clientset.Interface, resyncPeriod time.Duration) coreinformers.PodInformer {
+	selector := fields.ParseSelectorOrDie(
+		"status.phase!=" + string(v1.PodSucceeded) +
+			",status.phase!=" + string(v1.PodFailed))
+	lw := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), string(v1.ResourcePods), metav1.NamespaceAll, selector)
+	return &podInformer{
+		informer: cache.NewSharedIndexInformer(lw, &v1.Pod{}, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}),
+	}
+}
+```
+
+```go
+c.PodInformer = factory.NewPodInformer(client, 0)
+```
+
+```go
+c, err := opts.Config()
+```
+
+cc.InformerFactory.Start(stopCh)
+
+```go
+// NewSharedInformerFactory constructs a new instance of sharedInformerFactory for all namespaces.
+func NewSharedInformerFactory(client kubernetes.Interface, defaultResync time.Duration) SharedInformerFactory {
+	return NewSharedInformerFactoryWithOptions(client, defaultResync)
+}
+```
+
+```go
+c.InformerFactory = informers.NewSharedInformerFactory(client, 0)
+```
+
+cc.InformerFactory.WaitForCacheSync(stopCh)
 
 ### 事件机制
 
@@ -48,10 +97,6 @@ import  (
 )
 
 ```
-
-
-
-
 
 ### List-Watch机制
 
@@ -65,15 +110,15 @@ import  (
 >
 > 理解 K8S 的设计精髓之 list-watch： http://wsfdl.com/kubernetes/2019/01/10/list_watch_in_k8s.html
 
-
-
-
-
 > 参考：
 >
 > Kubernetes Informer 详解： https://www.kubernetes.org.cn/2693.html
 
 
+
+### 运行调度
+
+sched.Run()
 
 
 
