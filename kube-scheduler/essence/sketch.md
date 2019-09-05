@@ -120,6 +120,365 @@ import  (
 
 sched.Run()
 
+> pkg/scheduler/scheduler.go
+
+```go
+func (sched *Scheduler) scheduleOne() {
+    //取出待调度pod
+    pod := sched.NextPod()
+    
+    //选择可调度节点
+    scheduleResult, err := sched.schedule(pod, pluginContext)
+    
+    //无可调度节点执行抢占逻辑
+    sched.preempt(fwk, pod, fitError)
+    
+    //假性绑定
+    allBound, err := sched.assumeVolumes(assumedPod, scheduleResult.SuggestedHost)
+    
+    
+}
+```
+
+#### 选择可调度节点
+
+实现Algorithm接口
+
+> pkg/scheduler/scheduler.go func New() {...}
+
+predicatekeys
+
+```
+"MaxGCEPDVolumeCount":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"MaxCSIVolumeCountPred":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"NoDiskConflict":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"GeneralPredicates":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"MaxEBSVolumeCount":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"MaxAzureDiskVolumeCount":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"MatchInterPodAffinity":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"CheckNodeUnschedulable":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"PodToleratesNodeTaints":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"CheckVolumeBinding":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"NoVolumeZoneConflict":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+```
+
+prioritykeys
+
+```
+"SelectorSpreadPriority":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"InterPodAffinityPriority":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"LeastRequestedPriority":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"BalancedResourceAllocation":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"NodePreferAvoidPodsPriority":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"NodeAffinityPriority":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"TaintTolerationPriority":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+"ImageLocalityPriority":<k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/sets.Empty>
+```
+
+
+
+执行调度逻辑
+
+> pkg/scheduler/core/generic_scheduler.go
+
+```
+func NewGenericScheduler
+```
+
+```go
+type genericScheduler struct {
+
+    cache                    internalcache.Cache
+
+    schedulingQueue          internalqueue.SchedulingQueue
+
+    predicates               map[string]predicates.FitPredicate
+
+    priorityMetaProducer     priorities.PriorityMetadataProducer
+
+    predicateMetaProducer    predicates.PredicateMetadataProducer
+
+    prioritizers             []priorities.PriorityConfig
+
+    framework                framework.Framework
+
+    extenders                []algorithm.SchedulerExtender
+
+    alwaysCheckAllPredicates bool
+
+    nodeInfoSnapshot         *schedulernodeinfo.Snapshot
+
+    volumeBinder             *volumebinder.VolumeBinder
+
+    pvcLister                corelisters.PersistentVolumeClaimLister
+
+    pdbLister                algorithm.PDBLister
+
+    disablePreemption        bool
+
+    percentageOfNodesToScore int32
+
+    enableNonPreempting      bool
+
+}
+
+```
+
+```go
+// Schedule tries to schedule the given pod to one of the nodes in the node list.
+// If it succeeds, it will return the name of the node.
+// If it fails, it will return a FitError error with reasons.
+func (g *genericScheduler) Schedule(pod *v1.Pod, pluginContext *framework.PluginContext) (result ScheduleResult, err error) {
+    findNodesThatFit
+    if len(filteredNodes) == 1 {
+        return ScheduleResult{
+			SuggestedHost:  filteredNodes[0].Name,
+			EvaluatedNodes: 1 + len(failedPredicateMap),
+			FeasibleNodes:  1,
+		}, nil
+    }
+    PrioritizeNodes
+}
+```
+
+sched.Framework
+
+> pkg/scheduler/factory/factory.go
+
+```go
+func NewConfigFactory(args *ConfigFactoryArgs) *Configurator {
+    // framework has a set of plugins and the context used for running them.
+    framework, err := framework.NewFramework(args.Registry, args.Plugins, args.PluginConfig)
+    c := &Configurator{
+        framework:   framework,
+    }
+}
+```
+
+预选
+
+```go
+// Filters the nodes to find the ones that fit based on the given predicate functions
+// Each node is passed through the predicate functions to determine if it is a fit
+func (g *genericScheduler) findNodesThatFit {
+    //获取numNodesToFind
+    //获取meta?
+    podFitsOnNode
+    g.framework.RunFilterPlugins
+}
+```
+
+优选
+
+```go
+// PrioritizeNodes prioritizes the nodes by running the individual priority functions in parallel.
+// Each priority function is expected to set a score of 0-10
+// 0 is the lowest priority score (least preferred node) and 10 is the highest
+// Each priority function can also have its own weight
+// The node scores returned by the priority function are multiplied by the weights to get weighted scores
+// All scores are finally combined (added) to get the total weighted scores of all nodes
+func PrioritizeNodes(
+	pod *v1.Pod,
+	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	meta interface{},
+	priorityConfigs []priorities.PriorityConfig,
+	nodes []*v1.Node,
+	extenders []algorithm.SchedulerExtender,
+	framework framework.Framework,
+    pluginContext *framework.PluginContext) (schedulerapi.HostPriorityList, error) {
+    
+    for i := range priorityConfigs {
+		if priorityConfigs[i].Function != nil {
+			wg.Add(1)
+			go func(index int) {
+				defer wg.Done()
+				var err error
+				results[index], err = priorityConfigs[index].Function(pod, nodeNameToInfo, nodes)
+				if err != nil {
+					appendError(err)
+				}
+			}(i)
+		} else {
+			results[i] = make(schedulerapi.HostPriorityList, len(nodes))
+		}
+	}
+    
+}
+```
+
+```go
+// HostPriority represents the priority of scheduling to a particular host, higher priority is better.
+type HostPriority struct {
+	// Name of the host
+	Host string
+	// Score associated with the host
+	Score int
+}
+
+// HostPriorityList declares a []HostPriority type.
+type HostPriorityList []HostPriority
+
+results := make([]schedulerapi.HostPriorityList, len(priorityConfigs), len(priorityConfigs))
+```
+
+priorityConfigs[index].Function, 例如：
+
+"InterPodAffinityPriority"：func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) 
+
+> pkg/scheduler/algorithm/priorities/interpod_affinity.go
+
+```go
+func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod v1.Pod, nodeNameToInfo map[string]schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
+    
+}
+```
+
+将来全部采用Map-Reduce模式统计node-score
+
+```go
+	workqueue.ParallelizeUntil(context.TODO(), 16, len(nodes), func(index int) {
+		nodeInfo := nodeNameToInfo[nodes[index].Name]
+		for i := range priorityConfigs {
+			if priorityConfigs[i].Function != nil {
+				continue
+			}
+
+			var err error
+			results[i][index], err = priorityConfigs[i].Map(pod, meta, nodeInfo)
+			if err != nil {
+				appendError(err)
+				results[i][index].Host = nodes[index].Name
+			}
+		}
+	})
+
+	for i := range priorityConfigs {
+		if priorityConfigs[i].Reduce == nil {
+			continue
+		}
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			if err := priorityConfigs[index].Reduce(pod, meta, nodeNameToInfo, results[index]); err != nil {
+				appendError(err)
+			}
+			if klog.V(10) {
+				for _, hostPriority := range results[index] {
+					klog.Infof("%v -> %v: %v, Score: (%d)", util.GetPodFullName(pod), hostPriority.Host, priorityConfigs[index].Name, hostPriority.Score)
+				}
+			}
+		}(i)
+	}
+```
+
+priorityConfigs[i].Map(pod, meta, nodeInfo)，例如：
+
+> pkg/scheduler/algorithm/priorities/resource_allocation.go
+
+```go
+// PriorityMap priorities nodes according to the resource allocations on the node.
+// It will use `scorer` function to calculate the score.
+func (r *ResourceAllocationPriority) PriorityMap(
+	pod *v1.Pod,
+	meta interface{},
+	nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error)
+```
+
+> pkg/scheduler/algorithm/priorities/reduce.go，[0, maxPriority]标准化
+
+```go
+// NormalizeReduce generates a PriorityReduceFunction that can normalize the result
+// scores to [0, maxPriority]. If reverse is set to true, it reverses the scores by
+// subtracting it from maxPriority.
+func NormalizeReduce(maxPriority int, reverse bool) PriorityReduceFunction {
+    
+}
+```
+
+
+
+> pkg/scheduler/framework/v1alpha1/framework.go
+
+```go
+// RunScorePlugins runs the set of configured scoring plugins. It returns a list that
+// stores for each scoring plugin name the corresponding NodeScoreList(s).
+// It also returns *Status, which is set to non-success if any of the plugins returns
+// a non-success status.
+func (f *framework) RunScorePlugins(pc *PluginContext, pod *v1.Pod, nodes []*v1.Node) (PluginToNodeScores, *Status) {
+    
+}
+```
+
+统计分值
+```go
+// Summarize all scores.
+	result := make(schedulerapi.HostPriorityList, 0, len(nodes))
+
+	for i := range nodes {
+		result = append(result, schedulerapi.HostPriority{Host: nodes[i].Name, Score: 0})
+		for j := range priorityConfigs {
+			result[i].Score += results[j][i].Score * priorityConfigs[j].Weight
+		}
+
+		for j := range scoresMap {
+			result[i].Score += scoresMap[j][i].Score
+		}
+	}
+```
+
+优选打分-数据结构
+|      | node1 | node2 | ...  | nodeN |  |
+| ---- | ----- | ---- | ----- | ----- | ---- |
+| priority1 | Map（打分） |      |       |  | Reduece（标准化） |
+| priority2 | Map（打分） | | |  | Reduece（标准化） |
+| ... | Map（打分） | | |  | Reduece（标准化） |
+| priority | Map（打分） | | |  | Reduece（标准化） |
+| Total | 加和统计 | | |  |  |
+
+选择最高分值
+
+> pkg/scheduler/core/generic_scheduler.go
+
+```go
+// selectHost takes a prioritized list of nodes and then picks one
+// in a reservoir sampling manner from the nodes that had the highest score.
+func (g *genericScheduler) selectHost(priorityList schedulerapi.HostPriorityList) (string, error) {}
+```
+
+
+
+#### 抢占逻辑（当无可调度节点时）
+
+> pkg/scheduler/scheduler.go
+
+```go
+// preempt tries to create room for a pod that has failed to schedule, by preempting lower priority pods if possible.
+// If it succeeds, it adds the name of the node where preemption has happened to the pod spec.
+// It returns the node name and an error if any.
+func (sched *Scheduler) preempt(fwk framework.Framework, preemptor *v1.Pod, scheduleErr error) (string, error) {
+    
+}
+```
+
+> pkg/scheduler/factory/factory.go
+
+``` go
+func (p *podPreemptor) GetUpdatedPod(pod *v1.Pod) (*v1.Pod, error) {
+	return p.Client.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -505,5 +864,6 @@ type KubeSchedulerConfiguration struct {
 参考资料：
 
 1. Kubernetes scheduler学习笔记: https://mp.weixin.qq.com/s?__biz=MzA5OTAyNzQ2OA==&mid=2649702449&idx=1&sn=8e6446948700becbe1cb23abbfecb82e&chksm=88937f52bfe4f6440016e6146af6214e201f8f8205ceda6364187fe9365b98826445bed6a3f0&scene=0&xtrack=1#rd
-
 2. kubelet 源码分析： 事件处理：https://cizixs.com/2017/06/22/kubelet-source-code-analysis-part4-event/
+3. 胡伟煌的gitbook：https://www.huweihuang.com/kubernetes-notes/code-analysis/kube-scheduler/scheduleOne.html
+4. 胡伟煌的博客：https://www.huweihuang.com/
